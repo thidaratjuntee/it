@@ -2,105 +2,151 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ม.1 เกมระบบสารสนเทศ - Hologram Touch</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ม.1 เกมระบบสารสนเทศ - Air Touch Hand Tracking</title>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     
     <style>
-        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        #container { position: relative; width: 100vw; height: 100vh; }
+        video { transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
         
-        /* สั่งเปิดกล้องหลังแบบเสถียร ไม่โดนบล็อกแน่นอน */
-        #webcam {
-            position: fixed; right: 0; bottom: 0; min-width: 100%; min-height: 100%;
-            width: auto; height: auto; z-index: -100; background-size: cover;
+        #instruction {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: #00ffcc; padding: 12px 24px;
+            border-radius: 30px; font-size: 16px; font-weight: bold; z-index: 10;
+            text-align: center; border: 2px solid #00ffcc; width: 80%; max-width: 500px;
         }
 
-        /* กล่องเกมลอยโปร่งแสงแบบโฮโลแกรม */
-        #game-board {
-            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
-            width: 90%; max-width: 480px; height: auto; z-index: 10;
+        /* ป๊อปอัปความรู้ที่เด้งเมื่อเอานิ้วไปจิ้มค้างไว้ */
+        #info-popup {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%) scale(0);
+            width: 85%; max-width: 400px; background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 20; text-align: center; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        #bg-canva {
-            width: 100%; height: auto; border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block;
-        }
-
-        /* สร้างปุ่มวงกลมเอฟเฟกต์เรืองแสงไฮเทค ทับตำแหน่งไอคอนคุณครู */
-        .hologram-btn {
-            position: absolute; border-radius: 50%; cursor: pointer;
-            background: rgba(0, 255, 204, 0.15);
-            border: 3px dashed #00ffcc;
-            box-shadow: 0 0 15px #00ffcc;
-            animation: pulse 1.5s infinite;
-        }
-
-        /* จัดตำแหน่งให้ตรงกับไอคอนทั้ง 3 ของคุณครูเป๊ะๆ */
-        #btn-ram1 { width: 24%; height: 26%; top: 28%; left: 15%; }
-        #btn-cpu  { width: 24%; height: 26%; top: 28%; left: 61%; }
-        #btn-ram2 { width: 24%; height: 26%; top: 57%; left: 38%; }
-
-        /* การ์ดข้อความความรู้ที่จะเด้งขึ้นมาเมื่อเด็กเอานิ้วจิ้ม */
-        #popup-card {
-            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
-            width: 85%; max-width: 380px; background: rgba(255, 255, 255, 0.95);
-            padding: 20px; border-radius: 20px; z-index: 100; text-align: center;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; pointer-events: none;
-        }
-        #popup-card.show { bottom: 40px; opacity: 1; pointer-events: auto; }
-        
-        #popup-title { color: #00a8ff; font-size: 22px; margin: 0 0 10px 0; font-weight: bold; }
-        #popup-text { color: #333; font-size: 15px; line-height: 1.5; margin: 0 0 15px 0; }
-        
-        .close-game-btn {
-            background: linear-gradient(135deg, #00a8ff, #00796b); color: white;
-            border: none; padding: 10px 30px; border-radius: 50px; font-weight: bold; cursor: pointer;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 10px #00ffcc; }
-            50% { transform: scale(1.08); box-shadow: 0 0 25px #00ffcc; }
-            100% { transform: scale(1); box-shadow: 0 0 10px #00ffcc; }
-        }
+        #info-popup.active { transform: translateX(-50%) scale(1); }
+        #info-title { color: #0056b3; margin-top: 0; font-size: 20px; }
+        #info-text { color: #333; font-size: 15px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-    <video id="webcam" autoplay playsinline></video>
-
-    <div id="game-board">
-        <img id="bg-canva" src="hardware-info.png">
+    <div id="container">
+        <div id="instruction">👆 ยื่นมือเข้าหากล้อง แล้วใช้ "ปลายนิ้วชี้" จิ้มกล่องข้อความในอากาศ!</div>
         
-        <div id="btn-ram1" class="hologram-btn" onclick="openItem('RAM (หน่วยความจำชั่วคราว)', 'ตัวที่ 1 ทำหน้าที่พักข้อมูลชั่วคราวขณะเปิดโปรแกรม ยิ่งมีขนาดใหญ่ คอมพิวเตอร์ก็ยิ่งทำงานได้รวดเร็วและเปิดแอปได้พร้อมกันเยอะ ๆ โดยไม่ค้างครับ!')"></div>
-        <div id="btn-cpu" class="hologram-btn" onclick="openItem('CPU (หน่วยประมวลผลกลาง)', 'เปรียบเสมือน สมองของคอมพิวเตอร์ ทำหน้าที่คิดคำนวณ ประมวลผลคำสั่ง และควบคุมการทำงานของอุปกรณ์ฮาร์ดแวร์ทุกชิ้นในเครื่องครับ')"></div>
-        <div id="btn-ram2" class="hologram-btn" onclick="openItem('RAM (หน่วยความจำชั่วคราว)', 'ตัวที่ 2 ทำหน้าที่ช่วยเก็บข้อมูลโปรแกรมที่ครูกำลังเปิดใช้งานอยู่ร่วมกับ CPU เพื่อให้การเล่นเกมหรือตัดต่อกราฟิกไหลลื่นไม่มีกระตุก!')"></div>
-    </div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="output_canvas"></canvas>
 
-    <div id="popup-card">
-        <h3 id="popup-title">อาร์ติแฟกต์</h3>
-        <p id="popup-text">คำอธิบาย...</p>
-        <button class="close-btn" onclick="closeItem()">👍 เรียนรู้เรียบร้อย / จิ้มอันต่อไป</button>
+        <div id="info-popup">
+            <h3 id="info-title">อุปกรณ์</h3>
+            <p id="info-text">ความหมาย...</p>
+        </div>
     </div>
 
     <script>
-        // เรียกเปิดกล้องหลังแบบเสถียรสูงสุด
-        const video = document.getElementById('webcam');
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-            .then(function(stream) { video.srcObject = stream; })
-            .catch(function(error) { console.log("กล้องติดสิทธิ์ความปลอดภัย: ", error); });
+        const videoElement = document.getElementById('webcam');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const popup = document.getElementById('info-popup');
+        const pTitle = document.getElementById('info-title');
+        const pText = document.getElementById('info-text');
+
+        // ตั้งค่ากล่องความรู้กระจายในอากาศ (แกน X, แกน Y, ความกว้าง, ความสูง)
+        const items = [
+            { id: 'cpu', name: 'CPU (สมองคอมพิวเตอร์)', text: 'หน่วยประมวลผลกลาง ทำหน้าที่คิดคำนวณและควบคุมการทำงานของระบบทั้งหมด เปรียบเหมือนสมองของมนุษย์ครับ!', x: 100, y: 150, w: 160, h: 80, color: '#0052D4' },
+            { id: 'ram', name: 'RAM (ความจำชั่วคราว)', text: 'หน่วยความจำหลักที่ทำงานตอนเปิดเครื่อง ช่วยพักข้อมูลให้ CPU เรียกใช้งานได้อย่างรวดเร็ว ยิ่งเยอะคอมยิ่งลื่น!', x: 400, y: 200, w: 160, h: 80, color: '#757F9A' }
+        ];
+
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function onResults(results) {
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            
+            // วาดภาพจากกล้องลงบน Canvas
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+            
+            // วาดกล่องข้อความกระจายในอากาศให้นักเรียนจิ้ม
+            items.forEach(item => {
+                canvasCtx.fillStyle = item.color;
+                canvasCtx.beginPath();
+                canvasCtx.roundRect(item.x, item.y, item.w, item.h, 15);
+                canvasCtx.fill();
+                
+                // สลักชื่อปุ่มบนหน้าจอ
+                canvasCtx.fillStyle = '#ffffff';
+                canvasCtx.font = 'bold 14px sans-serif';
+                canvasCtx.textAlign = 'center';
+                canvasCtx.fillText(item.id.toUpperCase(), item.x + (item.w/2), item.y + (item.h/2) + 5);
+            });
+
+            let anyHover = false;
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    // ดึงพิกัดตำแหน่ง "ปลายนิ้วชี้" (Index Finger Tip = จุดที่ 8 แบบในรูปครูเลยครับ)
+                    const indexTip = landmarks[8];
+                    const x = (1 - indexTip.x) * canvasElement.width; // แปลงพิกัดกลับด้านให้ตรงกับการส่องกระจก
+                    const y = indexTip.y * canvasElement.height;
+
+                    // วาดจุดวงกลมสีเขียวสะท้อนแสงตรงปลายนิ้วชี้เพื่อบอกตำแหน่งจิ้ม
+                    canvasCtx.fillStyle = '#00ffcc';
+                    canvasCtx.beginPath();
+                    canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                    canvasCtx.fill();
+
+                    // ตรวจสอบว่าปลายนิ้วชี้ลอยไปโดนกล่องข้อความไหนในอากาศไหม
+                    items.forEach(item => {
+                        if (x > item.x && x < item.x + item.w && y > item.y && y < item.y + item.h) {
+                            // ถ้านิ้วชี้ไปจ่อโดน ให้เด้งป๊อปอัปความรู้ขึ้นมาทันที!
+                            pTitle.innerText = item.name;
+                            pText.innerText = item.text;
+                            popup.classList.add('active');
+                            anyHover = true;
+
+                            // วาดเส้นขอบไฮไลต์ปุ่มชิ้นนั้นว่ากำลังโดนเลือก
+                            canvasCtx.strokeStyle = '#00ffcc';
+                            canvasCtx.lineWidth = 4;
+                            canvasCtx.strokeRect(item.x - 2, item.y - 2, item.w + 4, item.h + 4);
+                        }
+                    });
+                }
+            }
+
+            // ถ้านิ้วเลื่อนออกจากปุ่ม ให้ปิดป๊อปอัปความรู้
+            if (!anyHover) {
+                popup.classList.remove('active');
+            }
         }
 
-        // ฟังก์ชันจิ้มแล้วการ์ดความรู้สไลด์เด้งขึ้นมา
-        function openItem(title, text) {
-            document.getElementById('popup-title').innerText = title;
-            document.getElementById('popup-text').innerText = text;
-            document.getElementById('popup-card').classList.add('show');
-        }
+        // เรียกเปิดใช้ระบบวิเคราะห์มือ AI ของ MediaPipe
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
+        });
+        hands.onResults(onResults);
 
-        function closeItem() {
-            document.getElementById('popup-card').classList.remove('show');
-        }
+        // คำสั่งเปิดกล้องบนสมาร์ตโฟน/คอมพิวเตอร์
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
     </script>
 </body>
 </html>
