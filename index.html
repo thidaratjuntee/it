@@ -3,62 +3,67 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ม.1 เกมระบบสารสนเทศ - Air Touch Responsive</title>
+    <title>ม.1 เกมเติมคำระบบสารสนเทศ - WebAR</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: sans-serif; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Arial', sans-serif; }
         #container { position: relative; width: 100vw; height: 100vh; }
         video { transform: scaleX(-1); width: 100%; height: 100%; object-fit: cover; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
         
-        #instruction {
+        /* แผงแสดงโจทย์และคะแนนด้านบน */
+        #game-ui {
             position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.85); color: #00ffcc; padding: 10px 20px;
-            border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 10;
-            text-align: center; border: 2px solid #00ffcc; width: 85%; max-width: 400px;
+            background: rgba(15, 23, 42, 0.9); color: white; padding: 15px;
+            border-radius: 20px; width: 85%; max-width: 400px; z-index: 10;
+            text-align: center; border: 2px solid #38bdf8; box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+        .score { color: #facc15; font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        .question { color: #38bdf8; font-size: 15px; margin-bottom: 10px; font-weight: bold; }
+        .slots { font-size: 28px; font-weight: bold; letter-spacing: 10px; color: #00ffcc; }
 
-        #info-popup {
-            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%) scale(0);
-            width: 85%; max-width: 360px; background: rgba(255, 255, 255, 0.95);
-            padding: 15px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            z-index: 20; text-align: center; transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        /* ป๊อปอัปแจ้งเตือนเวลาตอบถูกหรือผิด */
+        #feedback {
+            position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%) scale(0);
+            background: rgba(255,255,255,0.95); padding: 20px 40px; border-radius: 50px;
+            font-size: 24px; font-weight: bold; z-index: 30; transition: 0.2s ease;
         }
-        #info-popup.active { transform: translateX(-50%) scale(1); }
-        #info-title { color: #0056b3; margin: 0 0 8px 0; font-size: 18px; }
-        #info-text { color: #333; font-size: 14px; line-height: 1.4; margin: 0; }
+        #feedback.correct { color: #22c55e; transform: translate(-50%, -50%) scale(1); }
+        #feedback.wrong { color: #ef4444; transform: translate(-50%, -50%) scale(1); }
     </style>
 </head>
 <body>
 
     <div id="container">
-        <div id="instruction">👆 ยื่นมือเข้าหากล้อง แล้วใช้ "ปลายนิ้วชี้" จิ้มกล่องในอากาศ!</div>
+        <div id="game-ui">
+            <div class="score">คะแนน: <span id="score-val">0</span></div>
+            <div id="q-hint" class="question">คำใบ้: สมองของคอมพิวเตอร์ ทำหน้าที่คิดคำนวณ</div>
+            <div id="q-slots" class="slots">C _ U</div>
+        </div>
+
+        <div id="feedback">ถูกต้อง! 🎉</div>
+
         <video id="webcam" autoplay playsinline></video>
         <canvas id="output_canvas"></canvas>
-
-        <div id="info-popup">
-            <h3 id="info-title">อุปกรณ์</h3>
-            <p id="info-text">ความหมาย...</p>
-        </div>
     </div>
 
     <script>
         const videoElement = document.getElementById('webcam');
         const canvasElement = document.getElementById('output_canvas');
         const canvasCtx = canvasElement.getContext('2d');
-        const popup = document.getElementById('info-popup');
-        const pTitle = document.getElementById('info-title');
-        const pText = document.getElementById('info-text');
+        const feedback = document.getElementById('feedback');
+        
+        let score = 0;
+        let canAnswer = true;
 
-        // ปรับระบบตำแหน่งแบบ % (อัตราส่วนต่อหน้าจอ) เพื่อให้ไอคอนกระจายตัวสวยงามบนมือถือทุกรุ่น ไม่ล้นขอบ
-        // x_pct และ y_pct คือจุดเริ่มต้น (0-100% ของจอ) | w_pct และ h_pct คือขนาดกล่องปุ่ม
-        const items = [
-            { id: 'RAM 1', name: 'RAM ตัวที่ 1 (หน่วยความจำชั่วคราว)', text: 'ทำหน้าที่พักข้อมูลชั่วคราวเพื่อให้คอมพิวเตอร์ทำงานได้เร็วขึ้น ยิ่งมีเยอะ ยิ่งเปิดแอปได้พร้อมกันหลายๆ ตัวโดยไม่ค้าง!', x_pct: 15, y_pct: 25, w_pct: 32, h_pct: 10, color: '#0052D4' },
-            { id: 'CPU', name: 'CPU (สมองคอมพิวเตอร์)', text: 'หน่วยประมวลผลกลาง ทำหน้าที่คิดคำนวณและควบคุมการทำงานของระบบทั้งหมด เปรียบเหมือนสมองของคอมพิวเตอร์เลยครับ!', x_pct: 53, y_pct: 25, w_pct: 32, h_pct: 10, color: '#FF416C' },
-            { id: 'RAM 2', name: 'RAM ตัวที่ 2 (หน่วยความจำรอง)', text: 'ช่วยเสริมการประมวลผลร่วมกับหน่วยความจำหลัก ช่วยให้โปรเจกต์หรือแอปพลิเคชันที่มีขนาดใหญ่ทำงานได้ราบรื่นไม่มีสะดุด!', x_pct: 34, y_pct: 42, w_pct: 32, h_pct: 10, color: '#757F9A' }
+        // ข้อมูลด่านเกม
+        const stages = [
+            { hint: "คำใบ้: สมองของคอมพิวเตอร์ ทำหน้าที่คิดคำนวณ", display: "C _ U", ans: "P", choices: ["A", "P", "T", "X"] },
+            { hint: "คำใบ้: หน่วยความจำชั่วคราว พักข้อมูลให้ CPU", display: "R _ M", ans: "A", choices: ["O", "E", "A", "M"] }
         ];
+        let currentStage = 0;
 
         function resizeCanvas() {
             canvasElement.width = window.innerWidth;
@@ -73,84 +78,90 @@
             
             const screenW = canvasElement.width;
             const screenH = canvasElement.height;
+            const stage = stages[currentStage];
 
-            // วาดไอคอนแบบ Responsive ตามขนาดหน้าจอจริงของโทรศัพท์ครู
-            items.forEach(item => {
-                // แปลงค่า % เป็นพิกัดพิกเซลจริงบนหน้าจอขณะนั้น
-                const realX = (item.x_pct / 100) * screenW;
-                const realY = (item.y_pct / 100) * screenH;
-                const realW = (item.w_pct / 100) * screenW;
-                const realH = (item.h_pct / 100) * screenH;
+            // วาดแป้นพิมพ์ตัวเลือก 4 ปุ่มกระจายในอากาศอัตโนมัติ (แถวละ 2 ปุ่ม)
+            const buttonConfig = [
+                { x: 15, y: 35 }, { x: 53, y: 35 },
+                { x: 15, y: 50 }, { x: 53, y: 50 }
+            ];
 
-                canvasCtx.fillStyle = item.color;
+            stage.choices.forEach((char, idx) => {
+                const config = buttonConfig[idx];
+                const realX = (config.x / 100) * screenW;
+                const realY = (config.y / 100) * screenH;
+                const realW = 0.32 * screenW;
+                const realH = 0.10 * screenH;
+
+                // วาดปุ่มตัวเลือกสีน้ำเงินแบบโปร่งแสงล้ำๆ
+                canvasCtx.fillStyle = 'rgba(0, 82, 212, 0.85)';
                 canvasCtx.beginPath();
-                canvasCtx.roundRect(realX, realY, realW, realH, 12);
+                canvasCtx.roundRect(realX, realY, realW, realH, 15);
                 canvasCtx.fill();
+                canvasCtx.strokeStyle = '#38bdf8';
+                canvasCtx.lineWidth = 2;
+                canvasCtx.stroke();
                 
+                // ใส่ตัวอักษรลงบนปุ่ม
                 canvasCtx.fillStyle = '#ffffff';
-                canvasCtx.font = 'bold 15px sans-serif';
+                canvasCtx.font = 'bold 24px sans-serif';
                 canvasCtx.textAlign = 'center';
                 canvasCtx.textBaseline = 'middle';
-                canvasCtx.fillText(item.id, realX + (realW / 2), realY + (realH / 2));
-            });
+                canvasCtx.fillText(char, realX + (realW / 2), realY + (realH / 2));
 
-            let anyHover = false;
+                // ตรวจจับพิกัดนิ้วมือจิ้มปุ่ม
+                if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0 && canAnswer) {
+                    const indexTip = results.multiHandLandmarks[0][8]; // นิ้วชี้
+                    const fingerX = (1 - indexTip.x) * screenW;
+                    const fingerY = indexTip.y * screenH;
 
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                for (const landmarks of results.multiHandLandmarks) {
-                    const indexTip = landmarks[8]; 
-                    const x = (1 - indexTip.x) * screenW;
-                    const y = indexTip.y * screenH;
-
-                    // วาดจุดโฟกัสสีเขียวนีออนที่ปลายกระดูกนิ้วชี้
+                    // วาดจุดสีเขียวนีออนที่ปลายนิ้วผู้เล่น
                     canvasCtx.fillStyle = '#00ffcc';
                     canvasCtx.beginPath();
-                    canvasCtx.arc(x, y, 10, 0, 2 * Math.PI);
+                    canvasCtx.arc(fingerX, fingerY, 12, 0, 2 * Math.PI);
                     canvasCtx.fill();
 
-                    // ตรวจจับการชนกันในอากาศแบบอิงตามเปอร์เซ็นต์จอ
-                    items.forEach(item => {
-                        const realX = (item.x_pct / 100) * screenW;
-                        const realY = (item.y_pct / 100) * screenH;
-                        const realW = (item.w_pct / 100) * screenW;
-                        const realH = (item.h_pct / 100) * screenH;
-
-                        if (x > realX && x < realX + realW && y > realY && y < realY + realH) {
-                            pTitle.innerText = item.name;
-                            pText.innerText = item.text;
-                            popup.classList.add('active');
-                            anyHover = true;
-
-                            canvasCtx.strokeStyle = '#00ffcc';
-                            canvasCtx.lineWidth = 3;
-                            canvasCtx.strokeRect(realX - 2, realY - 2, realW + 4, realH + 4);
+                    // เช็กถ้านิ้วชี้ชนกับปุ่มในอากาศ
+                    if (fingerX > realX && fingerX < realX + realW && fingerY > realY && fingerY < realY + realH) {
+                        canAnswer = false;
+                        if (char === stage.ans) {
+                            // ตอบถูก
+                            score += 100;
+                            document.getElementById('score-val').innerText = score;
+                            document.getElementById('q-slots').innerText = stage.display.replace('_', stage.ans);
+                            feedback.innerText = "ถูกต้อง! 🎉";
+                            feedback.className = "correct";
+                            
+                            setTimeout(() => {
+                                feedback.className = "";
+                                currentStage = (currentStage + 1) % stages.length; // ไปด่านต่อไป
+                                document.getElementById('q-hint').innerText = stages[currentStage].hint;
+                                document.getElementById('q-slots').innerText = stages[currentStage].display;
+                                canAnswer = true;
+                            }, 2000);
+                        } else {
+                            // ตอบผิด
+                            feedback.innerText = "ลองใหม่นะ! ❌";
+                            feedback.className = "wrong";
+                            setTimeout(() => {
+                                feedback.className = "";
+                                canAnswer = true;
+                            }, 1200);
                         }
-                    });
+                    }
                 }
-            }
-
-            if (!anyHover) {
-                popup.classList.remove('active');
-            }
+            });
         }
 
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
-        hands.setOptions({
-            maxNumHands: 1,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6 });
         hands.onResults(onResults);
 
         const camera = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({ image: videoElement });
-            },
-            width: 480,
-            height: 640
+            onFrame: async () => { await hands.send({ image: videoElement }); },
+            width: 480, height: 640
         });
         camera.start();
     </script>
