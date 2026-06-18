@@ -3,34 +3,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ม.1 ระบบสารสนเทศ - Hand Tracking AR</title>
-    
+    <title>ม.1 ระบบสารสนเทศ WebAR</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-hand-aframe.prod.js"></script>
-    
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        #instruction {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: white; padding: 12px 24px;
-            border-radius: 25px; font-family: sans-serif; font-size: 14px; z-index: 999;
-            text-align: center; width: 80%; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-        }
-    </style>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
 </head>
-<body>
+<body style="margin: 0px; overflow: hidden; background-color: #000;">
 
-    <div id="instruction">👋 แบมือส่องเข้าหากล้อง เพื่อดูสื่อ Hardware จาก Canva!</div>
+    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+        
+        <a-marker preset="hiro">
+            <a-image src="hardware-info.png" position="0 0 0" rotation="-90 0 0" scale="2 1 1"></a-image>
+        </a-marker>
 
-    <a-scene mindar-hand="filterMinCF:0.001; filterBeta: 15" embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: true">
-        
-        <a-camera active="true" position="0 0 0" look-controls="enabled: false"></a-camera>
-        
-        <a-entity mindar-hand-target="targetIndex: 0">
-            <a-image src="hardware-info.png" position="0 0 0" rotation="0 0 0" scale="0.8 0.4 0.4"></a-image>
-        </a-entity>
-        
-    </a-scene>
+        <a-entity camera></a-entity>
+    </scene>
 
 </body>
 </html>
