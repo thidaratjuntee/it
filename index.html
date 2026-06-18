@@ -3,38 +3,104 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ม.1 WebAR - Air Touch Game</title>
-    
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.1/dist/mindar-hand-aframe.prod.js"></script>
+    <title>ม.1 เกมระบบสารสนเทศ - Hologram Touch</title>
     
     <style>
-        body { margin: 0; overflow: hidden; background: #000; }
-        #instruction {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.8); color: #00ffcc; padding: 12px 24px;
-            border-radius: 20px; font-family: sans-serif; font-size: 16px; z-index: 999;
-            text-align: center; border: 2px solid #00ffcc; width: 85%;
+        body { margin: 0; overflow: hidden; font-family: sans-serif; background-color: #000; }
+        
+        /* สั่งเปิดกล้องหลังแบบเสถียร ไม่โดนบล็อกแน่นอน */
+        #webcam {
+            position: fixed; right: 0; bottom: 0; min-width: 100%; min-height: 100%;
+            width: auto; height: auto; z-index: -100; background-size: cover;
+        }
+
+        /* กล่องเกมลอยโปร่งแสงแบบโฮโลแกรม */
+        #game-board {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 480px; height: auto; z-index: 10;
+        }
+
+        #bg-canva {
+            width: 100%; height: auto; border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: block;
+        }
+
+        /* สร้างปุ่มวงกลมเอฟเฟกต์เรืองแสงไฮเทค ทับตำแหน่งไอคอนคุณครู */
+        .hologram-btn {
+            position: absolute; border-radius: 50%; cursor: pointer;
+            background: rgba(0, 255, 204, 0.15);
+            border: 3px dashed #00ffcc;
+            box-shadow: 0 0 15px #00ffcc;
+            animation: pulse 1.5s infinite;
+        }
+
+        /* จัดตำแหน่งให้ตรงกับไอคอนทั้ง 3 ของคุณครูเป๊ะๆ */
+        #btn-ram1 { width: 24%; height: 26%; top: 28%; left: 15%; }
+        #btn-cpu  { width: 24%; height: 26%; top: 28%; left: 61%; }
+        #btn-ram2 { width: 24%; height: 26%; top: 57%; left: 38%; }
+
+        /* การ์ดข้อความความรู้ที่จะเด้งขึ้นมาเมื่อเด็กเอานิ้วจิ้ม */
+        #popup-card {
+            position: fixed; bottom: -100px; left: 50%; transform: translateX(-50%);
+            width: 85%; max-width: 380px; background: rgba(255, 255, 255, 0.95);
+            padding: 20px; border-radius: 20px; z-index: 100; text-align: center;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.3);
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); opacity: 0; pointer-events: none;
+        }
+        #popup-card.show { bottom: 40px; opacity: 1; pointer-events: auto; }
+        
+        #popup-title { color: #00a8ff; font-size: 22px; margin: 0 0 10px 0; font-weight: bold; }
+        #popup-text { color: #333; font-size: 15px; line-height: 1.5; margin: 0 0 15px 0; }
+        
+        .close-game-btn {
+            background: linear-gradient(135deg, #00a8ff, #00796b); color: white;
+            border: none; padding: 10px 30px; border-radius: 50px; font-weight: bold; cursor: pointer;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 10px #00ffcc; }
+            50% { transform: scale(1.08); box-shadow: 0 0 25px #00ffcc; }
+            100% { transform: scale(1); box-shadow: 0 0 10px #00ffcc; }
         }
     </style>
 </head>
 <body>
 
-    <div id="instruction">👆 ยื่นมือเข้าหากล้อง แล้วใช้ "ปลายนิ้วชี้" ชี้ไปที่ไอคอนเพื่อดูความหมาย!</div>
+    <video id="webcam" autoplay playsinline></video>
 
-    <a-scene mindar-hand="filterMinCF:0.001; filterBeta: 15" embedded color-space="sRGB" renderer="colorManagement: true, physicallyCorrectLights" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+    <div id="game-board">
+        <img id="bg-canva" src="hardware-info.png">
         
-        <a-camera active="true" position="0 0 0" look-controls="enabled: false"></a-camera>
-        
-        <a-entity mindar-hand-target="targetIndex: 0">
-            <a-image src="hardware-info.png" position="0 0 0" scale="1 0.5 1"></a-image>
-        </a-entity>
-        
-        <a-entity mindar-hand-target="targetIndex: 8">
-            <a-text value="RAM & CPU: Hardware!" position="0 0.2 0" scale="0.4 0.4 0.4" color="#ff007f" align="center" font="kelsonsans"></a-text>
-        </a-entity>
-        
-    </a-scene>
+        <div id="btn-ram1" class="hologram-btn" onclick="openItem('RAM (หน่วยความจำชั่วคราว)', 'ตัวที่ 1 ทำหน้าที่พักข้อมูลชั่วคราวขณะเปิดโปรแกรม ยิ่งมีขนาดใหญ่ คอมพิวเตอร์ก็ยิ่งทำงานได้รวดเร็วและเปิดแอปได้พร้อมกันเยอะ ๆ โดยไม่ค้างครับ!')"></div>
+        <div id="btn-cpu" class="hologram-btn" onclick="openItem('CPU (หน่วยประมวลผลกลาง)', 'เปรียบเสมือน สมองของคอมพิวเตอร์ ทำหน้าที่คิดคำนวณ ประมวลผลคำสั่ง และควบคุมการทำงานของอุปกรณ์ฮาร์ดแวร์ทุกชิ้นในเครื่องครับ')"></div>
+        <div id="btn-ram2" class="hologram-btn" onclick="openItem('RAM (หน่วยความจำชั่วคราว)', 'ตัวที่ 2 ทำหน้าที่ช่วยเก็บข้อมูลโปรแกรมที่ครูกำลังเปิดใช้งานอยู่ร่วมกับ CPU เพื่อให้การเล่นเกมหรือตัดต่อกราฟิกไหลลื่นไม่มีกระตุก!')"></div>
+    </div>
 
+    <div id="popup-card">
+        <h3 id="popup-title">อาร์ติแฟกต์</h3>
+        <p id="popup-text">คำอธิบาย...</p>
+        <button class="close-btn" onclick="closeItem()">👍 เรียนรู้เรียบร้อย / จิ้มอันต่อไป</button>
+    </div>
+
+    <script>
+        // เรียกเปิดกล้องหลังแบบเสถียรสูงสุด
+        const video = document.getElementById('webcam');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) { video.srcObject = stream; })
+            .catch(function(error) { console.log("กล้องติดสิทธิ์ความปลอดภัย: ", error); });
+        }
+
+        // ฟังก์ชันจิ้มแล้วการ์ดความรู้สไลด์เด้งขึ้นมา
+        function openItem(title, text) {
+            document.getElementById('popup-title').innerText = title;
+            document.getElementById('popup-text').innerText = text;
+            document.getElementById('popup-card').classList.add('show');
+        }
+
+        function closeItem() {
+            document.getElementById('popup-card').classList.remove('show');
+        }
+    </script>
 </body>
 </html>
