@@ -3,20 +3,72 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ม.1 ระบบสารสนเทศ WebAR</title>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-</head>
-<body style="margin: 0px; overflow: hidden; background-color: #000;">
-
-    <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+    <title>ม.1 ระบบสารสนเทศ - Interactive Pop-up</title>
+    
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'ChulaCharasNew', sans-serif; }
         
-        <a-marker preset="hiro">
-            <a-image src="hardware-info.png" position="0 0 0" rotation="-90 0 0" scale="2 1 1"></a-image>
-        </a-marker>
+        /* สั่งให้กล้องถ่ายรูปทำงานอยู่ด้านหลัง */
+        #webcam {
+            position: fixed; right: 0; bottom: 0; min-width: 100%; min-height: 100%;
+            width: auto; height: auto; z-index: -100; background-size: cover;
+        }
 
-        <a-entity camera></a-entity>
-    </scene>
+        /* กล่องแสดงภาพสื่อสารสนเทศจาก Canva ให้เด้งขึ้นมากลางจอทันที */
+        #ar-popup-container {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 90%; max-width: 450px; text-align: center; z-index: 10;
+            animation: bounceIn 0.8s ease; /* ใส่เอฟเฟกต์เด้งดึ๋ง */
+        }
 
+        #ar-image {
+            width: 100%; height: auto; border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        /* ปุ่มกดแบบโต้ตอบให้นักเรียนกดเล่น */
+        .btn-action {
+            display: inline-block; margin-top: 15px; padding: 12px 30px;
+            background: linear-gradient(135deg, #FF416C, #FF4B2B);
+            color: white; font-weight: bold; font-size: 16px; border: none;
+            border-radius: 50px; cursor: pointer; text-decoration: none;
+            box-shadow: 0 4px 15px rgba(255, 65, 108, 0.4);
+            transition: 0.2s;
+        }
+        .btn-action:active { transform: scale(0.95); }
+
+        /* เอฟเฟกต์การเด้งขึ้นมาของภาพ */
+        @keyframes bounceIn {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }
+            70% { transform: translate(-50%, -50%) scale(0.9); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <video id="webcam" autoplay playsinline></video>
+
+    <div id="ar-popup-container">
+        <img id="ar-image" src="hardware-info.png" alt="Hardware สื่อการสอน">
+        
+        <button class="btn-action" onclick="playEffect()">👍 เข้าใจแล้ว!</button>
+    </div>
+
+    <script>
+        // โค้ดสั่งเปิดกล้องหลังมือถืออัตโนมัติ
+        const video = document.getElementById('webcam');
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+            .then(function(stream) { video.srcObject = stream; })
+            .catch(function(error) { console.log("ขอสิทธิ์เปิดกล้องไม่สำเร็จ: ", error); });
+        }
+
+        // ฟังก์ชันเมื่อเด็ก ๆ กดปุ่ม
+        function playEffect() {
+            alert("เก่งมาก! มารู้จักกับ ซอฟต์แวร์ (Software) ในสถานีต่อไปกันเลยครับ");
+        }
+    </script>
 </body>
 </html>
