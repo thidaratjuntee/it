@@ -2,8 +2,8 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ม.1 เกมระบบสารสนเทศ - Air Touch Hand Tracking</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ม.1 เกมระบบสารสนเทศ - Air Touch Responsive</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
     
@@ -14,29 +14,27 @@
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; transform: scaleX(-1); }
         
         #instruction {
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: #00ffcc; padding: 12px 24px;
-            border-radius: 30px; font-size: 16px; font-weight: bold; z-index: 10;
-            text-align: center; border: 2px solid #00ffcc; width: 80%; max-width: 500px;
+            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.85); color: #00ffcc; padding: 10px 20px;
+            border-radius: 30px; font-size: 14px; font-weight: bold; z-index: 10;
+            text-align: center; border: 2px solid #00ffcc; width: 85%; max-width: 400px;
         }
 
-        /* ป๊อปอัปความรู้ที่เด้งเมื่อเอานิ้วไปจิ้มค้างไว้ */
         #info-popup {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%) scale(0);
-            width: 85%; max-width: 400px; background: rgba(255, 255, 255, 0.95);
-            padding: 20px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-            z-index: 20; text-align: center; transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: absolute; bottom: 25px; left: 50%; transform: translateX(-50%) scale(0);
+            width: 85%; max-width: 360px; background: rgba(255, 255, 255, 0.95);
+            padding: 15px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            z-index: 20; text-align: center; transition: 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         #info-popup.active { transform: translateX(-50%) scale(1); }
-        #info-title { color: #0056b3; margin-top: 0; font-size: 20px; }
-        #info-text { color: #333; font-size: 15px; line-height: 1.4; }
+        #info-title { color: #0056b3; margin: 0 0 8px 0; font-size: 18px; }
+        #info-text { color: #333; font-size: 14px; line-height: 1.4; margin: 0; }
     </style>
 </head>
 <body>
 
     <div id="container">
-        <div id="instruction">👆 ยื่นมือเข้าหากล้อง แล้วใช้ "ปลายนิ้วชี้" จิ้มกล่องข้อความในอากาศ!</div>
-        
+        <div id="instruction">👆 ยื่นมือเข้าหากล้อง แล้วใช้ "ปลายนิ้วชี้" จิ้มกล่องในอากาศ!</div>
         <video id="webcam" autoplay playsinline></video>
         <canvas id="output_canvas"></canvas>
 
@@ -54,10 +52,12 @@
         const pTitle = document.getElementById('info-title');
         const pText = document.getElementById('info-text');
 
-        // ตั้งค่ากล่องความรู้กระจายในอากาศ (แกน X, แกน Y, ความกว้าง, ความสูง)
+        // ปรับระบบตำแหน่งแบบ % (อัตราส่วนต่อหน้าจอ) เพื่อให้ไอคอนกระจายตัวสวยงามบนมือถือทุกรุ่น ไม่ล้นขอบ
+        // x_pct และ y_pct คือจุดเริ่มต้น (0-100% ของจอ) | w_pct และ h_pct คือขนาดกล่องปุ่ม
         const items = [
-            { id: 'cpu', name: 'CPU (สมองคอมพิวเตอร์)', text: 'หน่วยประมวลผลกลาง ทำหน้าที่คิดคำนวณและควบคุมการทำงานของระบบทั้งหมด เปรียบเหมือนสมองของมนุษย์ครับ!', x: 100, y: 150, w: 160, h: 80, color: '#0052D4' },
-            { id: 'ram', name: 'RAM (ความจำชั่วคราว)', text: 'หน่วยความจำหลักที่ทำงานตอนเปิดเครื่อง ช่วยพักข้อมูลให้ CPU เรียกใช้งานได้อย่างรวดเร็ว ยิ่งเยอะคอมยิ่งลื่น!', x: 400, y: 200, w: 160, h: 80, color: '#757F9A' }
+            { id: 'RAM 1', name: 'RAM ตัวที่ 1 (หน่วยความจำชั่วคราว)', text: 'ทำหน้าที่พักข้อมูลชั่วคราวเพื่อให้คอมพิวเตอร์ทำงานได้เร็วขึ้น ยิ่งมีเยอะ ยิ่งเปิดแอปได้พร้อมกันหลายๆ ตัวโดยไม่ค้าง!', x_pct: 15, y_pct: 25, w_pct: 32, h_pct: 10, color: '#0052D4' },
+            { id: 'CPU', name: 'CPU (สมองคอมพิวเตอร์)', text: 'หน่วยประมวลผลกลาง ทำหน้าที่คิดคำนวณและควบคุมการทำงานของระบบทั้งหมด เปรียบเหมือนสมองของคอมพิวเตอร์เลยครับ!', x_pct: 53, y_pct: 25, w_pct: 32, h_pct: 10, color: '#FF416C' },
+            { id: 'RAM 2', name: 'RAM ตัวที่ 2 (หน่วยความจำรอง)', text: 'ช่วยเสริมการประมวลผลร่วมกับหน่วยความจำหลัก ช่วยให้โปรเจกต์หรือแอปพลิเคชันที่มีขนาดใหญ่ทำงานได้ราบรื่นไม่มีสะดุด!', x_pct: 34, y_pct: 42, w_pct: 32, h_pct: 10, color: '#757F9A' }
         ];
 
         function resizeCanvas() {
@@ -69,82 +69,88 @@
 
         function onResults(results) {
             canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-            
-            // วาดภาพจากกล้องลงบน Canvas
             canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
             
-            // วาดกล่องข้อความกระจายในอากาศให้นักเรียนจิ้ม
+            const screenW = canvasElement.width;
+            const screenH = canvasElement.height;
+
+            // วาดไอคอนแบบ Responsive ตามขนาดหน้าจอจริงของโทรศัพท์ครู
             items.forEach(item => {
+                // แปลงค่า % เป็นพิกัดพิกเซลจริงบนหน้าจอขณะนั้น
+                const realX = (item.x_pct / 100) * screenW;
+                const realY = (item.y_pct / 100) * screenH;
+                const realW = (item.w_pct / 100) * screenW;
+                const realH = (item.h_pct / 100) * screenH;
+
                 canvasCtx.fillStyle = item.color;
                 canvasCtx.beginPath();
-                canvasCtx.roundRect(item.x, item.y, item.w, item.h, 15);
+                canvasCtx.roundRect(realX, realY, realW, realH, 12);
                 canvasCtx.fill();
                 
-                // สลักชื่อปุ่มบนหน้าจอ
                 canvasCtx.fillStyle = '#ffffff';
-                canvasCtx.font = 'bold 14px sans-serif';
+                canvasCtx.font = 'bold 15px sans-serif';
                 canvasCtx.textAlign = 'center';
-                canvasCtx.fillText(item.id.toUpperCase(), item.x + (item.w/2), item.y + (item.h/2) + 5);
+                canvasCtx.textBaseline = 'middle';
+                canvasCtx.fillText(item.id, realX + (realW / 2), realY + (realH / 2));
             });
 
             let anyHover = false;
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 for (const landmarks of results.multiHandLandmarks) {
-                    // ดึงพิกัดตำแหน่ง "ปลายนิ้วชี้" (Index Finger Tip = จุดที่ 8 แบบในรูปครูเลยครับ)
-                    const indexTip = landmarks[8];
-                    const x = (1 - indexTip.x) * canvasElement.width; // แปลงพิกัดกลับด้านให้ตรงกับการส่องกระจก
-                    const y = indexTip.y * canvasElement.height;
+                    const indexTip = landmarks[8]; 
+                    const x = (1 - indexTip.x) * screenW;
+                    const y = indexTip.y * screenH;
 
-                    // วาดจุดวงกลมสีเขียวสะท้อนแสงตรงปลายนิ้วชี้เพื่อบอกตำแหน่งจิ้ม
+                    // วาดจุดโฟกัสสีเขียวนีออนที่ปลายกระดูกนิ้วชี้
                     canvasCtx.fillStyle = '#00ffcc';
                     canvasCtx.beginPath();
-                    canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                    canvasCtx.arc(x, y, 10, 0, 2 * Math.PI);
                     canvasCtx.fill();
 
-                    // ตรวจสอบว่าปลายนิ้วชี้ลอยไปโดนกล่องข้อความไหนในอากาศไหม
+                    // ตรวจจับการชนกันในอากาศแบบอิงตามเปอร์เซ็นต์จอ
                     items.forEach(item => {
-                        if (x > item.x && x < item.x + item.w && y > item.y && y < item.y + item.h) {
-                            // ถ้านิ้วชี้ไปจ่อโดน ให้เด้งป๊อปอัปความรู้ขึ้นมาทันที!
+                        const realX = (item.x_pct / 100) * screenW;
+                        const realY = (item.y_pct / 100) * screenH;
+                        const realW = (item.w_pct / 100) * screenW;
+                        const realH = (item.h_pct / 100) * screenH;
+
+                        if (x > realX && x < realX + realW && y > realY && y < realY + realH) {
                             pTitle.innerText = item.name;
                             pText.innerText = item.text;
                             popup.classList.add('active');
                             anyHover = true;
 
-                            // วาดเส้นขอบไฮไลต์ปุ่มชิ้นนั้นว่ากำลังโดนเลือก
                             canvasCtx.strokeStyle = '#00ffcc';
-                            canvasCtx.lineWidth = 4;
-                            canvasCtx.strokeRect(item.x - 2, item.y - 2, item.w + 4, item.h + 4);
+                            canvasCtx.lineWidth = 3;
+                            canvasCtx.strokeRect(realX - 2, realY - 2, realW + 4, realH + 4);
                         }
                     });
                 }
             }
 
-            // ถ้านิ้วเลื่อนออกจากปุ่ม ให้ปิดป๊อปอัปความรู้
             if (!anyHover) {
                 popup.classList.remove('active');
             }
         }
 
-        // เรียกเปิดใช้ระบบวิเคราะห์มือ AI ของ MediaPipe
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
         hands.setOptions({
             maxNumHands: 1,
             modelComplexity: 1,
-            minDetectionConfidence: 0.6,
-            minTrackingConfidence: 0.6
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
         });
         hands.onResults(onResults);
 
-        // คำสั่งเปิดกล้องบนสมาร์ตโฟน/คอมพิวเตอร์
         const camera = new Camera(videoElement, {
             onFrame: async () => {
                 await hands.send({ image: videoElement });
             },
-            width: 640,
-            height: 480
+            width: 480,
+            height: 640
         });
         camera.start();
     </script>
